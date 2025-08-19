@@ -1,2 +1,113 @@
-# RNA-Annotator-v1
-A tool for comprehensive RNA annotation
+
+# RNA-Annotator: A Comprehensive RNA Annotation Pipeline
+
+RNA-Annotator is a powerful, command-line tool designed to rapidly fetch, process, and visualize a rich set of genomic and functional annotations for any given human RNA transcript.
+
+By providing either a genomic coordinate or an Ensembl Transcript ID, you can generate a full suite of publication-ready data tracks for analysis in the Integrative Genomics Viewer (IGV). This pipeline automates the complex task of aggregating data from multiple major bioinformatics databases and APIs into a single, cohesive view.
+
+## Features
+
+-   Accepts genomic coordinates (`chr:start-end`) or Ensembl Transcript IDs (`ENST...`).
+-   Fetches data from major resources like Ensembl, ClinVar, Dfam, and RMBase.
+-   Integrates local and remote datasets for conservation, variants, modifications, and protein binding sites.
+-   Generates standard `.bed`, `.bedGraph`, and `.wig` track files.
+-   Automates launching and loading all generated tracks into IGV (macOS & Linux).
+
+## Installation
+
+This pipeline is distributed as a Conda environment and includes installer scripts to automate the setup process.
+
+> **Note:** The setup will download a large data package (~16 GB). Please ensure you have a stable internet connection and sufficient disk space before you begin.
+
+### Step 1: Clone the Repository
+
+First, clone this repository to your local machine using Git:
+
+```bash
+git clone https://github.com/moss-lab/RNA-Annotator-v1.git
+cd RNA-Annotator-v1
+```
+
+### Step 2: Run the Installer
+
+The installer will automatically download the required data, create the `rna-annotator` conda environment, and set up all necessary software. Please choose the command for your operating system.
+
+#### For macOS and Linux Users:
+
+In your terminal, run the following command. This will take a significant amount of time due to the large data download.
+```bash
+chmod +x mac_linux_installer.sh
+./mac_linux_installer.sh
+```
+
+#### For Windows Users:
+
+Open **Anaconda Prompt** from your Start Menu and run the following command:
+```cmd
+win_installer.bat
+```
+
+## Usage
+
+### 1. Activate the Conda Environment
+
+Before running the tool, you **must** activate the conda environment in every new terminal session.
+
+```bash
+conda activate rna-annotator
+```
+
+### 2. Run the Tool
+
+The basic command structure is:
+`python rna-annotator [QUERY] [OPTIONS]`
+
+#### Arguments Explained
+
+**`[QUERY]` (Required)**
+The genomic region or transcript you want to analyze. This is the only required argument. It can be in one of three formats:
+1.  **Genomic Coordinates:** `chr:start-end` (e.g., `chr19:58345183-58353492`)
+2.  **Ensembl Transcript ID (unversioned):** `ENST...` (e.g., `ENST00000263100`)
+3.  **Ensembl Transcript ID (versioned):** `ENST...` (e.g., `ENST00000263100.8`)
+
+**`[OPTIONS]` (Optional Flags)**
+These flags tell the tool which analyses to perform. You can combine as many as you like.
+
+*   `-refseq_functional`: Extracts RefSeq functional element annotations.
+*   `-eclips`: Extracts eCLIP-seq peaks to identify RNA-Binding Protein (RBP) sites.
+*   `-SNP`: Fetches all known SNPs for the region from the Ensembl REST API.
+*   `-miRNA`: Extracts known miRNA annotations from a local GFF3 file.
+*   `-chem_mod`: Fetches known RNA chemical modifications from the RMBase database.
+*   `-polyA`: Extracts polyadenylation sites from the PolyASite 2.0 database.
+*   `-repeated-element`: Fetches repetitive element annotations (e.g., SINEs, LINEs) from the Dfam API.
+*   `-chemical_prop`: Extracts local chemical probing data (e.g., icSHAPE) from local WIG files.
+*   `-clinvar`: Extracts clinical variants from a local ClinVar VCF file.
+*   `-target_scan`: Extracts predicted miRNA binding sites from local TargetScan BED files.
+*   `-phastCons`: Fetches evolutionary conservation scores (phastCons 100-way).
+*   `-igv`: After analysis, automatically launch IGV and load all generated track files.
+*   `--igv-path PATH`: **Required if using `-igv`**. Provide the full path to your IGV application executable.
+
+### Examples
+
+**Example 1: Analyze a region by coordinates and run selected analyses.**
+```bash
+python rna-annotator chr19:58345183-58353492 -clinvar -phastCons -SNP
+```
+
+**Example 2: Analyze a transcript by ID, run all analyses, and visualize in IGV.**
+```bash
+# Note: The path to IGV will be different on your system.
+python rna-annotator ENST00000263100.8 -refseq_functional -eclips -SNP -miRNA -chem_mod -polyA -repeated-element -clinvar -target_scan -chemical_prop -phastCons -igv --igv-path "/Applications/IGV.app"
+```
+
+---
+
+## Citation
+
+If you use RNA-Annotator in your research, please cite:
+> [Citation information will be added here upon publication.]
+
+## Contact
+
+For questions, bug reports, or suggestions, please contact Abdelraouf at: **raouf@iastate.edu**.
+```
