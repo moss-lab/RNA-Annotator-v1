@@ -1,11 +1,8 @@
 
 
+<img width="200" height="200" alt="Screenshot 2025-08-19 at 8 07 10 PM" src="https://github.com/user-attachments/assets/c96b105e-bf0e-46ea-be84-384315f7f6fd" />
+
 # RNA-Annotator: A Comprehensive RNA Annotation Pipeline
-
-
-
-<img width="198" height="62" alt="Screenshot 2025-08-19 at 8 07 10 PM" src="https://github.com/user-attachments/assets/c96b105e-bf0e-46ea-be84-384315f7f6fd" />
-
 
 RNA-Annotator is a powerful, command-line tool designed to rapidly fetch, process, and visualize a rich set of genomic and functional annotations for any given human RNA transcript.
 
