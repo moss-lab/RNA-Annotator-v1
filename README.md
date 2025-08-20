@@ -1,6 +1,7 @@
 
+<img width="728" height="355" alt="Screenshot 2025-08-19 at 8 10 12 PM" src="https://github.com/user-attachments/assets/1c5306e9-81b5-4a41-9901-5090da04d00b" />
 
-<img width="200" height="200" alt="Screenshot 2025-08-19 at 8 07 10 PM" src="https://github.com/user-attachments/assets/c96b105e-bf0e-46ea-be84-384315f7f6fd" />
+
 
 # RNA-Annotator: A Comprehensive RNA Annotation Pipeline
 
