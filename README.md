@@ -2,6 +2,11 @@
 
 # RNA-Annotator: A Comprehensive RNA Annotation Pipeline
 
+
+<img width="390" height="462" alt="Picture1" src="https://github.com/user-attachments/assets/1c513b5c-8926-4cf4-a4a6-2f0d144dd2f1" />
+
+
+
 RNA-Annotator is a powerful, command-line tool designed to rapidly fetch, process, and visualize a rich set of genomic and functional annotations for any given human RNA transcript.
 
 By providing either a genomic coordinate or an Ensembl Transcript ID, you can generate a full suite of publication-ready data tracks for analysis in the Integrative Genomics Viewer (IGV). This pipeline automates the complex task of aggregating data from multiple major bioinformatics databases and APIs into a single, cohesive view.
