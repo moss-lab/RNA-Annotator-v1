@@ -91,6 +91,9 @@ These flags tell the tool which analyses to perform. You can combine as many as 
 *   `-clinvar`: Extracts clinical variants from a local ClinVar VCF file.
 *   `-target_scan`: Extracts predicted miRNA binding sites from local TargetScan BED files.
 *   `-phastCons`: Fetches evolutionary conservation scores (phastCons 100-way).
+*   `-CpG_islands`: Extracts CpG islands from the UCSC CpG Islands Track.
+*   `-SpliceVar`: Extracts Splice varients from the UCSC SpliceVarDB Track.
+*   `-Alt_Events`: Extracts alternative  events from UCSC Alt Events Track.
 *   `-igv`: After analysis, automatically launch and load results into IGV.
 *   `--igv-path PATH`: **Required if using `-igv`**. Provide the full path to your IGV application.
 
