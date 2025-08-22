@@ -95,6 +95,7 @@ These flags tell the tool which analyses to perform. You can combine as many as 
 *   `-SpliceVar`: Extracts Splice varients from the UCSC SpliceVarDB Track.
 *   `-Alt_Events`: Extracts alternative  events from UCSC Alt Events Track.
 *   `-TFs`: Extracts Transcription Factor binding sites from the UCSC TFBS Track.
+*   `-GTEX`: Extracts rna expression coverage per tissue form UCSC GTEX Tracks.
 *   `-igv`: After analysis, automatically launch and load results into IGV.
 *   `--igv-path PATH`: **Required if using `-igv`**. Provide the full path to your IGV application.
 
