@@ -5,7 +5,7 @@ echo --- Welcome to the RNA-Annotator Setup for Windows ---
 
 :: --- Configuration ---
 :: !!! IMPORTANT: Replace this URL with your actual Zenodo direct download link !!!
-set "DATA_URL=https://zenodo.org/records/16907288?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImVhMThmMzkyLWM2ZjktNDYzYi1hYTFhLWM0Nzg5N2Q2YWY4MSIsImRhdGEiOnt9LCJyYW5kb20iOiI5NzA5MDFiYmI1YzE0ZjYyNmI2Mjk4MTRlZWQyZDk5NiJ9._X0lwwIUEjgu9d6z4sdrmzX-K-OWgpIer_VxOyaJC7Cqe_PiwIj-hFg64VIcugIFW35M6pruOr2uJNS18DCVIw"
+set "DATA_URL=https://zenodo.org/records/16953760/files/resources_data_sets.zip?download=1"
 set "DATA_ARCHIVE=resources_data_sets.zip"
 
 :: --- Pre-flight Checks ---
