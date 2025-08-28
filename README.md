@@ -29,7 +29,7 @@ The pipeline generates a main `[query]_results/` directory containing up to thre
 
 This pipeline is distributed as a Conda environment and includes installer scripts to automate the setup process.
 
-> **Note:** The setup will download a large data package (~16 GB). Please ensure you have a stable internet connection and sufficient disk space before you begin.
+> **Note:** The setup will download a large data package (~29 GB). Please ensure you have a stable internet connection and sufficient disk space before you begin.
 
 ### Step 1: Clone the Repository
 
