@@ -2,26 +2,28 @@
 <img width="728" height="355" alt="Screenshot 2025-08-19 at 8 10 12 PM" src="https://github.com/user-attachments/assets/1c5306e9-81b5-4a41-9901-5090da04d00b" />
 
 
-
 # RNA-Annotator: A Comprehensive RNA Annotation Pipeline
 
 RNA-Annotator is a powerful, command-line tool designed to rapidly fetch, process, and visualize a rich set of genomic and functional annotations for any given human RNA transcript.
 
-By providing either a genomic coordinate or an Ensembl Transcript ID, you can generate a full suite of publication-ready data tracks for analysis in the Integrative Genomics Viewer (IGV). This pipeline automates the complex task of aggregating data from multiple major bioinformatics databases and APIs into a single, cohesive view.
+By providing either a genomic coordinate or an Ensembl Transcript ID, you can generate a full suite of publication-ready data tracks for analysis in the Integrative Genomics Viewer (IGV). This pipeline automates the complex task of aggregating data from multiple major bioinformatics databases and APIs—including specialized RNA structure analysis from the **ScanFold database**—into a single, cohesive view.
 
 ## Output Files
 
-The pipeline generates a `results/` directory containing two subfolders:
-1.  **`results/bed_tracks/`**: Contains `.bed`, `.bedGraph`, and `.wig` files formatted for direct visualization as tracks in the IGV genome browser.
-2.  **`results/detailed_results/`**: Contains `.tsv` and `.csv` files with the raw, detailed information for every feature found in the analyzed region.
+The pipeline generates a main `[query]_results/` directory containing up to three subfolders:
+
+1.  **`bed_tracks/`**: Contains `.bed`, `.bedGraph`, `.wig`, and `.bp` files formatted for direct visualization as tracks in the IGV genome browser.
+2.  **`detailed_results/`**: Contains `.tsv` and `.csv` files with the raw, detailed information for every feature found in the analyzed region.
+3.  **`[transcript_id]_ScanFold/`**: This directory is created when using the `-download_scanfold` option. It contains all the raw output files unzipped from the [StructuromeDB](https://www.structurome.bb.iastate.edu/azt/) database for the specified transcript.
 
 ## Features
 
 *   Accepts genomic coordinates (`chr:start-end`) or Ensembl Transcript IDs (`ENST...`).
 *   Fetches data from major resources like Ensembl, ClinVar, Dfam, and RMBase.
+*   **Integrates RNA structure analysis from ScanFold**, generating tracks for base-pairing (arcs), MFE, z-score, and ensemble diversity.
 *   Integrates local and remote datasets for conservation, variants, modifications, and protein binding sites.
-*   Generates standard `.bed`, `.bedGraph`, and `.wig` track files.
-*   Automates launching and loading all generated tracks into IGV (macOS & Linux).
+*   Generates standard `.bed`, `.bedGraph`, `.wig`, and interaction (`.bp`) track files.
+*   Automates launching and loading all generated tracks into IGV (macOS, Linux & Windows).
 
 ## Installation
 
@@ -67,7 +69,7 @@ conda activate rna-annotator
 
 ### 2. Run the Tool
 
-The basic command structure is: `python rna-annotator [QUERY] [OPTIONS]`
+The basic command structure is: `python rna-annotator.py [QUERY] [OPTIONS]`
 
 #### Arguments Explained
 
@@ -80,6 +82,16 @@ The genomic region or transcript you want to analyze. This is the only required 
 **`[OPTIONS]` (Optional Flags)**
 These flags tell the tool which analyses to perform. You can combine as many as you like.
 
+##### ScanFold RNA Structure Analysis
+> **Note:** All ScanFold options (`-scanfold_bp`, `-scanfold_mfe`, etc.) **require** the `-download_scanfold` flag to be used in the same command. The input query for these options must be an **Ensembl Transcript ID**.
+
+*   `-download_scanfold`: Downloads precomputed ScanFold data for a full transcript.
+*   `-scanfold_bp`: Generates a track to visualize ScanFold base-pairing as arcs in IGV.
+*   `-scanfold_mfe`: Generates a wig track for ScanFold Minimum Free Energy (MFE).
+*   `-scanfold_zscore`: Generates a wig track for ScanFold z-score.
+*   `-scanfold_ed`: Generates a wig track for ScanFold Ensemble Diversity (ED).
+
+##### Standard Genomic Annotations
 *   `-refseq_functional`: Extracts RefSeq functional element annotations.
 *   `-eclips`: Extracts eCLIP-seq peaks to identify RNA-Binding Protein (RBP) sites.
 *   `-SNP`: Fetches all known SNPs for the region from the Ensembl REST API.
@@ -92,24 +104,55 @@ These flags tell the tool which analyses to perform. You can combine as many as 
 *   `-target_scan`: Extracts predicted miRNA binding sites from local TargetScan BED files.
 *   `-phastCons`: Fetches evolutionary conservation scores (phastCons 100-way).
 *   `-CpG_islands`: Extracts CpG islands from the UCSC CpG Islands Track.
-*   `-SpliceVar`: Extracts Splice varients from the UCSC SpliceVarDB Track.
-*   `-Alt_Events`: Extracts alternative  events from UCSC Alt Events Track.
+*   `-SpliceVar`: Extracts Splice variants from the UCSC SpliceVarDB Track.
+*   `-Alt_Events`: Extracts alternative splicing events from the UCSC Alt Events Track.
 *   `-TFs`: Extracts Transcription Factor binding sites from the UCSC TFBS Track.
-*   `-GTEX`: Extracts rna expression coverage per tissue form UCSC GTEX Tracks.
+*   `-GTEX`: Extracts RNA expression coverage per tissue from UCSC GTEX Tracks.
+
+##### IGV Integration
 *   `-igv`: After analysis, automatically launch and load results into IGV.
 *   `--igv-path PATH`: **Required if using `-igv`**. Provide the full path to your IGV application.
 
 ### Examples
 
-**Example 1: Analyze a region by coordinates and run selected analyses.**
+**Example 1: Analyze a region by coordinates with selected analyses.**
 ```bash
-python rna-annotator chr19:58345183-58353492 -clinvar -phastCons -SNP
+python rna-annotator.py chr19:58345183-58353492 -clinvar -phastCons -SNP
 ```
 
-**Example 2: Analyze a transcript by ID, run all analyses, and visualize in IGV.**
+**Example 2: Analyze a transcript by ID and run only the ScanFold analyses.**
+```bash
+python rna-annotator.py ENST00000263100.8 -download_scanfold -scanfold_bp -scanfold_mfe -scanfold_zscore -scanfold_ed
+```
+
+**Example 3: Run *every possible analysis* on a transcript and visualize in IGV.**
+This command demonstrates using all available flags for a comprehensive annotation.
 ```bash
 # Note: The path to IGV will be different on your system.
-python rna-annotator ENST00000263100.8 -refseq_functional -eclips -SNP -miRNA -chem_mod -polyA -repeated-element -clinvar -target_scan -chemical_prop -phastCons -igv --igv-path "/Applications/IGV.app"
+python rna-annotator.py ENST00000263100.8 \
+-download_scanfold \
+-scanfold_bp \
+-scanfold_mfe \
+-scanfold_zscore \
+-scanfold_ed \
+-refseq_functional \
+-eclips \
+-SNP \
+-miRNA \
+-chem_mod \
+-polyA \
+-repeated-element \
+-chemical_prop \
+-GTEX \
+-clinvar \
+-target_scan \
+-phastCons \
+-Alt_Events \
+-CpG_islands \
+-SpliceVar \
+-TFs \
+-igv \
+--igv-path "/Applications/IGV_2.16.2.app"
 ```
 
 ---
@@ -131,3 +174,4 @@ If you use RNA-Annotator in your research, please cite:
 
 ## Contact
 For questions, bug reports, or suggestions, please contact Abdelraouf at: **raouf@iastate.edu**.
+```
