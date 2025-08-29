@@ -8,15 +8,16 @@ import requests
 import csv 
 import gzip
 import tempfile 
+import random
+
 
 # --- IGV Configuration Constants ---
-BED_DIR = "results/bed_tracks"
-IGV_PORT = 60151
+
 
 # --- Core Analysis Functions ---
 
-def create_directories():
-    results_dir = "results"
+def create_directories(region_string):
+    results_dir = f"{region_string}_results"
     bed_tracks_dir = os.path.join(results_dir, "bed_tracks")
     detailed_results_dir = os.path.join(results_dir, "detailed_results")
 
@@ -27,7 +28,7 @@ def create_directories():
     if not os.path.exists(detailed_results_dir):
         os.makedirs(detailed_results_dir)
 
-    return bed_tracks_dir, detailed_results_dir
+    return bed_tracks_dir, detailed_results_dir, results_dir
 
 # --- HELPER FUNCTION FOR CROSS-PLATFORM BEDTOOLS ---
 def run_bedtools_intersect(input_file, chrom, start, end):
@@ -77,7 +78,7 @@ def extract_functional_elements(chrom, start, end, bed_files, bed_tracks_dir, de
                         else:
                             name = "."
                         
-                        chrom_out, start_out, end_out = cols[0], cols[1], cols[2]
+                        chrom_out, start_out, end_out = cols[0], int(cols[1])-1, cols[2]
                         bed9_line = f"{chrom_out}\t{start_out}\t{end_out}\t{name}\t0\t.\t{start_out}\t{end_out}\t0,0,255\n"
                         merged_bed_out.write(bed9_line)
                 print(f"📄 TSV written: {tsv_output}")
@@ -103,7 +104,7 @@ def process_eclips_data(chrom, start, end, bed_tracks_dir, detailed_results_dir)
             for line in result.stdout.strip().split("\n"):
                 cols = line.split("\t")
                 tsv_out.write("\t".join(cols) + "\n")
-                chrom_out, start_out, end_out = cols[0], cols[1], cols[2]
+                chrom_out, start_out, end_out = cols[0], int(cols[1])-1, cols[2]
                 name = cols[10]
                 bed9_line = f"{chrom_out}\t{start_out}\t{end_out}\t{name}\t0\t.\t{start_out}\t{end_out}\t225,0,0\n"
                 merged_bed_out.write(bed9_line)
@@ -269,9 +270,13 @@ def chemical_prop(chrom, start, end, bed_tracks_dir, detailed_results_dir, chemi
                 print(f"⚠️ No data found in {chem_file} for the specified region.")
                 continue
             with open(merged_bed9_file, "w") as merged_bed_out:
-                with gzip.open(chem_file, "rt") as f:
-                    header_line = f.readline()
-                merged_bed_out.write(header_line)
+                # with gzip.open(chem_file, "rt") as f:
+                header_line1 = 'track type=wiggle_0 graphType=heatmap autoScale=off viewLimits=0:1.0 color=255,0,0 altColor=255,255,0\n'
+                header_line2 = 'track type=wiggle_0 graphType=bar autoScale=on altColor=255,255,0\n'
+                if os.path.basename(chem_file).startswith("tNet") or os.path.basename(chem_file).startswith("PARS"):
+                    merged_bed_out.write(header_line2)
+                else:
+                    merged_bed_out.write(header_line1)
                 merged_bed_out.write(result.stdout)
                 tsv_output = os.path.join(detailed_results_dir, f"{os.path.basename(chem_file).replace('.wig.gz', f'_{chrom}_{start}_{end}.tsv')}")
                 with open(tsv_output, "w") as tsv_out:
@@ -280,10 +285,42 @@ def chemical_prop(chrom, start, end, bed_tracks_dir, detailed_results_dir, chemi
                         if len(cols) < 3: continue
                         tsv_out.write("\t".join(cols) + "\n")
                     print(f"📄 TSV written: {tsv_output}")
-                print(f"📄 TSV written: {tsv_output}")
         except subprocess.CalledProcessError as e:
             print(f"❌ Error processing {chem_file}:\n{e.stderr.strip()}")
         print(f"\n✅ ✅ Combined WIG track ready: {merged_bed9_file}")
+        
+        
+        
+        
+def GTEX_data(chrom, start, end, bed_tracks_dir, detailed_results_dir, GTEX_data_file):
+    for GTEX_file in GTEX_data_file:
+        merged_bed9_file = os.path.join(bed_tracks_dir, f"{os.path.basename(GTEX_file).replace('.wig.gz', f'_{chrom}_{start}_{end}.wig')}")
+        if not os.path.exists(GTEX_file):
+            print(f"❌ Error: File not found: {GTEX_file}")
+            continue
+        try:
+           
+            result = run_bedtools_intersect(GTEX_file, chrom, start, end)
+
+            if not result.stdout.strip():
+                print(f"⚠️ No data found in {GTEX_file} for the specified region.")
+                continue
+            with open(merged_bed9_file, "w") as merged_bed_out:
+                with gzip.open(GTEX_file, "rt") as f:
+                    header_line = f.readline()
+                merged_bed_out.write(header_line)
+                merged_bed_out.write(result.stdout)
+                tsv_output = os.path.join(detailed_results_dir, f"{os.path.basename(GTEX_file).replace('.wig.gz', f'_{chrom}_{start}_{end}.tsv')}")
+                with open(tsv_output, "w") as tsv_out:
+                    for line in result.stdout.strip().split("\n"):
+                        cols = line.split("\t")
+                        if len(cols) < 3: continue
+                        tsv_out.write("\t".join(cols) + "\n")
+                    print(f"📄 TSV written: {tsv_output}")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Error processing {GTEX_file}:\n{e.stderr.strip()}")
+        print(f"\n✅ ✅ Combined WIG track ready: {merged_bed9_file}")
+    
 
 def clinvar(chrom, start, end, bed_tracks_dir, detailed_results_dir, clinvar_file):
     try:
@@ -371,6 +408,237 @@ def phastCons(chrom, start, end, bed_tracks_dir, detailed_results_dir, phastCons
         print(f"📄 TSV written: {tsv_output}")
     except subprocess.CalledProcessError as e:
         print(f"❌ Error processing {phastCons_file} with tabix:\n{e.stderr.strip()}")
+        
+def fetch_Alt_Events(chrom, start, end, bed_tracks_dir):
+    alt_bed = "resources_data_sets/hg38_alt_events.bed"
+    alt_bed9_file = os.path.join(bed_tracks_dir, f"alt_splicing_{chrom}_{start}_{end}.bed")
+    result = run_bedtools_intersect(alt_bed, chrom, start, end)
+    if not result.stdout.strip():
+        print("⚠️ No alternative splicing events found.")
+        return
+    with open(alt_bed9_file, "w") as bed_out:
+        for line in result.stdout.strip().split("\n"):
+            cols = line.split("\t")
+            chrom_out, start_out, end_out = cols[0], int(cols[1])-1, cols[2]
+            name = cols[3]  # Event type, e.g., "altCassette"
+            bed9_line = f"{chrom_out}\t{start_out}\t{end_out}\t{name}\t0\t{cols[5]}\t{start_out}\t{end_out}\t255,0,0\n"
+            bed_out.write(bed9_line)
+    print(f"✅ BED track created: {alt_bed9_file}")
+    
+    
+def fetch_CpG_islands(chrom, start, end, bed_tracks_dir):
+    cpg_bed = "resources_data_sets/CpG.bed"
+    if not os.path.exists(cpg_bed):
+        print(f"❌ Error: CpG islands BED file not found: {cpg_bed}")
+        return
+    cpg_bed9_file = os.path.join(bed_tracks_dir, f"CpG_islands_{chrom}_{start}_{end}.bed")
+    result = run_bedtools_intersect(cpg_bed, chrom, start, end)
+    if not result.stdout.strip():
+        print("⚠️ No CpG islands found in this region.")
+        return
+    with open(cpg_bed9_file, "w") as bed_out:
+        for line in result.stdout.strip().split("\n"):
+            cols = line.split("\t")
+            chrom_out, start_out, end_out = cols[0], int(cols[1])-1, cols[2]
+            name = cols[3]
+            bed9_line = f"{chrom_out}\t{start_out}\t{end_out}\t{name}\t0\t.\t{start_out}\t{end_out}\t0,255,0\n"
+            bed_out.write(bed9_line)
+            
+            
+def fetch_SpliceVar(chrom, start, end, bed_tracks_dir,):
+    splicevar_bed = "resources_data_sets/SpliceVarDB.bed"
+    if not os.path.exists(splicevar_bed):
+        print(f"❌ Error: SpliceVar BED file not found: {splicevar_bed}")
+        return
+    splicevar_bed9_file = os.path.join(bed_tracks_dir, f"SpliceVar_{chrom}_{start}_{end}.bed")
+    # splicevar_tsv_file = os.path.join(bed_tracks_dir, f"SpliceVar_{chrom}_{start}_{end}.tsv")
+    try:
+        result = run_bedtools_intersect(splicevar_bed, chrom, start, end)   
+        if not result.stdout.strip():
+            print("⚠️ No SpliceVar variants found in this region.")
+            return
+        with open(splicevar_bed9_file, "w") as bed_out :
+            # with open(splicevar_tsv_file, "w") as tsv_out:
+            #     tsv_out.write(result.stdout)
+            bed_out.write(result.stdout)
+            print(f"✅ BED track created: {splicevar_bed9_file}")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error processing {splicevar_bed}:\n{e.stderr.strip()}")
+        
+        
+def fetch_TFs(chrom, start, end, bed_tracks_dir):
+    tf_bed = "resources_data_sets/TFs.bed"
+    if not os.path.exists(tf_bed):
+        print(f"❌ Error: Transcription Factor BED file not found: {tf_bed}")
+        return
+    tf_bed9_file = os.path.join(bed_tracks_dir, f"TF_binding_sites_{chrom}_{start}_{end}.bed")
+    # tf_tsv_file = os.path.join(bed_tracks_dir, f"TF_binding_sites_{chrom}_{start}_{end}.tsv")
+    try:
+        result = run_bedtools_intersect(tf_bed, chrom, start, end)
+        if not result.stdout.strip():
+            print("⚠️ No TF binding sites found in this region.")
+            return
+        with open(tf_bed9_file, "w") as bed_out:
+            # with open(tf_tsv_file, "w") as tsv_out:
+            #     tsv_out.write(result.stdout)
+            bed_out.write(result.stdout)
+            tsv_output = os.path.join(bed_tracks_dir, f"TF_binding_sites_{chrom}_{start}_{end}.tsv")
+        print(f"✅ BED track created: {tf_bed9_file}")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error processing {tf_bed}:\n{e.stderr.strip()}")
+        
+        
+        
+        
+def download_scanfold(transcript_id, results_dir):
+    base_url = f"https://structurome.bb.iastate.edu/azt/fetch?t={transcript_id}"
+    cmd = ["curl",  base_url, "--output",f"{transcript_id}_ScanFold.zip"]
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"✅ Downloaded ScanFold data for {transcript_id}")
+        unzip_cmd = ["unzip", f"{transcript_id}_ScanFold.zip", "-d", f"{results_dir}/{transcript_id}_ScanFold"]
+        subprocess.run(unzip_cmd, check=True)
+        print(f"✅ Unzipped ScanFold data for {transcript_id}")
+        rm= ["rm", f"{transcript_id}_ScanFold.zip"]
+        subprocess.run(rm, check=True)
+        print(f"✅ Removed zip file for {transcript_id}")
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error downloading or unzipping ScanFold data:\n{e}")
+        return
+    
+    
+    
+def scan_fold_bp(input_file,bed_tracks_dir):
+
+    output_file = f"{bed_tracks_dir}/scanfold_arcs.bp"
+    
+
+    try:    # First, read all lines into memory, just like the working script does
+        with open(input_file, 'r') as f:
+            all_lines = f.readlines()
+        
+        # --- Part 1: Automatically detect the genomic info (This is the ONLY change) ---
+        # We will find the chromosome, strand, start, and end from the file itself.
+        
+        chromosome = None
+        strand = None
+        genomic_start = None
+        genomic_end = None
+        
+        # Look for the first data line (which starts after line 7) to get the info
+        for line in all_lines[7:]:
+            line = line.strip()
+            if line: # If the line is not empty, we've found our data
+                first_data_line_parts = line.split('\t')
+                identifier = first_data_line_parts[0]
+                
+                context_part = identifier.split('_')[1]
+                chromosome, rest = context_part.split(':')
+                strand = rest[-1]  # The last character is the strand
+                rest=rest[:-1]  # Remove the trailing strand character
+                start_str, end_str = rest.split('-')
+                 
+                
+                genomic_start = int(start_str)
+                genomic_end = int(end_str)
+                
+                # We have the info, so we can stop looking
+                break
+        
+        # Safety check
+        if genomic_start is None:
+            print("❌ ERROR: Could not find any data lines in the file to get coordinates.")
+            exit()
+        
+        
+        # Open the output file for writing
+        with open(output_file, 'w') as genomic:
+            
+            # --- Step A: Blindly copy the first 7 lines (the header) ---
+            # This is exactly what the working script does.
+            header_lines = all_lines[0:7]
+            for line in header_lines:
+                genomic.write(line)
+                
+            # --- Step B: Process the data lines, starting from the 8th line ---
+            data_lines = all_lines[7:]
+            
+            for line in data_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                data = line.split('\t')
+                
+                # --- Step C: Apply the EXACT math from the working script ---
+                if strand == '+':
+                    pos1_start = genomic_start + int(data[1]) - 1
+                    pos1_end = genomic_start + int(data[2]) - 1
+                    pos2_start = genomic_start + int(data[3]) - 1
+                    pos2_end = genomic_start + int(data[4]) - 1
+                else: # Negative strand
+                    pos1_start = genomic_end - int(data[1]) + 1
+                    pos1_end = genomic_end - int(data[2]) + 1
+                    pos2_start = genomic_end - int(data[3]) + 1
+                    pos2_end = genomic_end - int(data[4]) + 1
+        
+                score = data[5].strip()
+                
+                # --- Step D: Write the output in the EXACT 6-column format ---
+                output_line = f"{chromosome}\t{pos1_start}\t{pos1_end}\t{pos2_start}\t{pos2_end}\t{score}\n"
+                genomic.write(output_line)
+        print(f"✅ ScanFold base-pairing arc file created: {output_file}")
+    except Exception as e:
+        print(f"❌ Error processing ScanFold data:\n{e}")
+        
+def scanfold_mfe(input_file, bed_tracks_dir,region_string):
+    mfe_wig_file = os.path.join(bed_tracks_dir, f"{region_string}_scanfold_mfe.wig")
+    try:
+        with open (mfe_wig_file, "w") as mfe_out:
+            with open(input_file, "r") as f:
+                mfe_out.write(f'track type=wiggle_0 name="ScanFold MFE" description="Minimum Free Energy" visibility=full graphType=bar  color=0,0,255 \n')
+                mfe_out.write(f"fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n")
+                for line in f :
+                    if not line.startswith('fixedStep'):
+                         mfe_out.write(line)
+        print(f"✅ ScanFold MFE wig file created: {mfe_wig_file}")
+    except Exception as e:
+        print(f"❌ Error creating ScanFold MFE wig file:\n{e}")
+    
+    
+    
+def scanfold_zscore(input_file, bed_tracks_dir,region_string):
+    zscore_wig_file = os.path.join(bed_tracks_dir, f"{region_string}_scanfold_zscore.wig")
+    try:
+        with open (zscore_wig_file, "w") as mfe_out:
+            with open(input_file, "r") as f:
+                mfe_out.write(f'track type=wiggle_0 name="ScanFold zscore" description="Minimum Free Energy" visibility=full graphType=bar  color=225,0,0 \n')
+                mfe_out.write(f"fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n")
+                for line in f :
+                    if not line.startswith('fixedStep'):
+                         mfe_out.write(line)
+        print(f"✅ ScanFold MFE wig file created: {zscore_wig_file}")
+    except Exception as e:
+        print(f"❌ Error creating ScanFold zscore wig file:\n{e}")
+    
+    
+    
+def scanfold_ed(input_file, bed_tracks_dir,region_string):
+    ed_wig_file = os.path.join(bed_tracks_dir, f"{region_string}_scanfold_ed.wig")
+    try:
+        with open (ed_wig_file, "w") as ed_out:
+            with open(input_file, "r") as f:
+                ed_out.write(f'track type=wiggle_0 name="ScanFold ED" description="Ensemble Diversity" visibility=full graphType=bar  color=0,225,225 \n')
+                ed_out.write(f"fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n")
+                for line in f :
+                    if not line.startswith('fixedStep'):
+                         ed_out.write(line)
+        print(f"✅ ScanFold ED wig file created: {ed_wig_file}")
+    except Exception as e:
+        print(f"❌ Error creating ScanFold ED wig file:\n{e}")
+           
+    
 
 # --- IGV Launcher Functions ---
 
@@ -384,14 +652,14 @@ def launch_igv(igv_app_path):
         os.startfile(igv_app_path)
     elif sys.platform == "darwin":
         print(f"  (Detected macOS)")
-        subprocess.Popen(["open", "-a", igv_app_path])
+        subprocess.Popen(["open","-n","-a", igv_app_path])
     else: # Linux
         print(f"  (Detected Linux OS)")
         subprocess.Popen([igv_app_path])
     print("⏳ Waiting 15 seconds for IGV to start and listen on its port...")
     time.sleep(15)
 
-def send_to_igv(file_path, region=None):
+def send_to_igv(file_path,IGV_PORT, region=None):
 
     if sys.platform == "win32":
         print(f"⚠️ Warning: Automatic loading in IGV with 'nc' is not supported on Windows.")
@@ -416,11 +684,11 @@ def send_to_igv(file_path, region=None):
         except subprocess.CalledProcessError:
             print(f"❌ Failed to send 'goto' command to IGV.")
 
-def open_bed_files_in_igv(region, igv_app_path):
+def open_bed_files_in_igv(region,IGV_PORT,BED_DIR,igv_app_path):
     if not os.path.exists(BED_DIR):
         print(f"❌ Directory not found: {BED_DIR}")
         return
-    bed_files = [f for f in os.listdir(BED_DIR) if f.endswith((".bed", ".wig", ".bedGraph"))]
+    bed_files = [f for f in os.listdir(BED_DIR) if f.endswith((".bed", ".wig", ".bedGraph","bp"))]
     if not bed_files:
         print("❌ No track files found in the results directory to load!")
         return
@@ -430,19 +698,35 @@ def open_bed_files_in_igv(region, igv_app_path):
     for i, bed_file in enumerate(bed_files):
         bed_path = os.path.join(BED_DIR, bed_file)
         if i == len(bed_files) - 1:
-            send_to_igv(bed_path, region)
+            send_to_igv(bed_path,IGV_PORT, region)
         else:
-            send_to_igv(bed_path)
+            send_to_igv(bed_path,IGV_PORT)
 
 # --- Main Execution ---
 
 def main():
-    bed_tracks_dir, detailed_results_dir = create_directories()
+    
+    
     parser = argparse.ArgumentParser(description="Run genomic analysis and optionally view results in IGV.")
     
     parser.add_argument('genomic_coordinates', 
                         type=str, 
                         help="Required. Genomic coordinates in 'chr:start-end' format (e.g., 'chr1:632108-632403').")
+    parser.add_argument('-download_scanfold', 
+                        action='store_true', 
+                        help="Downloads precomputed ScanFold data from https://www.structurome.bb.iastate.edu/azt/. NOTE: This requires the input coordinates to span the *entire* length of a full pre-mRNA transcript, not a partial region.")
+    parser.add_argument('-scanfold_bp', 
+                        action='store_true', 
+                        help="Generates a track to visualize ScanFold base-pairing as arcs in IGV")
+    parser.add_argument('-scanfold_mfe',
+                        action='store_true', 
+                        help="Generates a wig track to visualize ScanFold Minimum Free Energy (MFE) per nucleotide.")
+    parser.add_argument('-scanfold_zscore',
+                        action='store_true', 
+                        help="Generates a wig track to visualize ScanFold z-score per nucleotide.")
+    parser.add_argument('-scanfold_ed',
+                        action='store_true', 
+                        help="Generates a wig track to visualize ScanFold Ensemble Diversity (ED) per nucleotide.")
     parser.add_argument('-refseq_functional', 
                         action='store_true', 
                         help="Extracts RefSeq functional element annotations (e.g., biological regions).")
@@ -467,6 +751,9 @@ def main():
     parser.add_argument('-chemical_prop', 
                         action='store_true', 
                         help="Extracts local chemical probing data (e.g., icSHAPE) from local WIG files.")
+    parser.add_argument('-GTEX', 
+                        action='store_true', 
+                        help="Extracts rna expression coverage per tissue form UCSC GTEX Tracks.")
     parser.add_argument('-clinvar', 
                         action='store_true', 
                         help="Extracts clinical variants (SNPs and indels) from a local ClinVar VCF file.")
@@ -476,6 +763,18 @@ def main():
     parser.add_argument('-phastCons', 
                         action='store_true', 
                         help="Fetches evolutionary conservation scores (phastCons 100-way vertebrates).")
+    parser.add_argument('-Alt_Events', 
+                        action='store_true', 
+                        help="Extracts alternative  events from UCSC Alt Events Track.")
+    parser.add_argument('-CpG_islands', 
+                        action='store_true', 
+                        help="Extracts CpG islands from the UCSC CpG Islands Track. ")
+    parser.add_argument('-SpliceVar', 
+                        action='store_true', 
+                        help="Extracts Splice varients from the UCSC SpliceVarDB Track. ")
+    parser.add_argument('-TFs', 
+                        action='store_true', 
+                        help="Extracts Transcription Factor binding sites from the UCSC TFBS Track. ")
     parser.add_argument('-igv', 
                         action='store_true', 
                         help="After analysis, automatically launch IGV and load all generated track files.")
@@ -485,6 +784,7 @@ def main():
    
 
     args = parser.parse_args()
+    
 
     try:
         if args.genomic_coordinates.startswith("chr"):
@@ -503,14 +803,24 @@ def main():
     
     region_string = f"{chrom}:{start}-{end}"
     print(f"🧬 Processing region: {region_string}")
+    BED_DIR = f"{region_string}_results/bed_tracks"
+    bed_tracks_dir, detailed_results_dir,results_dir = create_directories(region_string)
+    IGV_PORT = 60151
 
 
     if args.chemical_prop: 
-        chemical_prop_file = [os.path.join("resources_data_sets", f) for f in os.listdir("resources_data_sets") if f.endswith(".wig.gz")]
+        chemical_prop_file = [os.path.join("resources_data_sets", f) for f in os.listdir("resources_data_sets") if (f.endswith(".wig.gz") and not f.startswith("GTEX"))]
         if not chemical_prop_file:
             print("❌ No chemical property files found in 'resources_data_sets' directory.")
         else:
             chemical_prop(chrom, start, end, bed_tracks_dir, detailed_results_dir, chemical_prop_file)
+            
+    if args.GTEX:
+        GTEX_data_file = [os.path.join("resources_data_sets", f) for f in os.listdir("resources_data_sets") if f.startswith("GTEX")]
+        if not GTEX_data_file:
+            print("❌ No chemical property files found in 'resources_data_sets' directory.")
+        else:
+            GTEX_data(chrom, start, end, bed_tracks_dir, detailed_results_dir, GTEX_data_file)
 
 
     if args.refseq_functional:
@@ -543,6 +853,114 @@ def main():
     if args.phastCons:
         phastCons_file ="resources_data_sets/hg38.phastCons100way.bedGraph.gz"
         phastCons(chrom, start, end, bed_tracks_dir, detailed_results_dir,phastCons_file)
+    
+    if args.Alt_Events:
+        fetch_Alt_Events(chrom, start, end, bed_tracks_dir)
+    
+    if args.CpG_islands:
+        fetch_CpG_islands(chrom, start, end, bed_tracks_dir)
+        
+    if args.SpliceVar:
+        fetch_SpliceVar(chrom, start, end, bed_tracks_dir)
+        
+        
+    if args.TFs:
+        fetch_TFs(chrom, start, end, bed_tracks_dir)    
+        
+        
+    if args.download_scanfold:
+        if  args.genomic_coordinates.startswith("ENST") and "."  in args.genomic_coordinates:
+            download_scanfold(args.genomic_coordinates,results_dir)
+        elif args.genomic_coordinates.startswith("ENST") and "."  not in args.genomic_coordinates:
+            ENST=trans_cor_map[trans_cor_map['Transcript stable ID version']].iloc[0]
+            download_scanfold(ENST,results_dir)
+        else:
+            print("❌ Error: To use -download_scanfold, the genomic_coordinates argument must be a valid Ensembl transcript ID (e.g., ENST00000380152.9).")
+    
+    if args.scanfold_bp and args.download_scanfold:
+        try: 
+            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            
+            input_file_path = None # Initialize to None in case we don't find it
+            
+            print(f"🔎 Searching for ScanFold .bp file in: {search_dir}")
+            
+            # os.walk will visit every subdirectory automatically
+            for root, dirs, files in os.walk(search_dir):
+                for filename in files:
+                    # Check if we found the specific file we need
+                    if filename.endswith(".win_120.stp_1.bp"):
+                        input_file_path = os.path.join(root, filename)
+                        break # Stop searching once we've found it
+                if input_file_path:
+                    break # Stop walking the directory tree
+                    
+            # Now, only run the conversion if we successfully found the file
+            if input_file_path:
+                scan_fold_bp(input_file_path, bed_tracks_dir)
+        except Exception as e:
+            print(f"❌ Error processing ScanFold .bp file:\n{e}")
+            return
+        
+    
+    if args.scanfold_mfe and args.download_scanfold:
+        try: 
+            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            input_file_path = None # Initialize to None in case we don't find it
+            print(f"🔎 Searching for ScanFold .mfe file in: {search_dir}") 
+            for root, dirs, files in os.walk(search_dir):
+                for filename in files:
+                    if filename.endswith("win_120.stp_1.mfe_avgs.wig"):
+                        input_file_path = os.path.join(root, filename)
+                        break
+                if input_file_path:
+                    break
+            if input_file_path:
+                scanfold_mfe(input_file_path, bed_tracks_dir,region_string)
+        except Exception as e:
+            print(f"❌ Error processing ScanFold .mfe file:\n{e}")
+    
+    if args.scanfold_zscore and args.download_scanfold:
+        try: 
+            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            input_file_path = None # Initialize to None in case we don't find it
+            print(f"🔎 Searching for ScanFold .zscore file in: {search_dir}")
+            for root, dirs, files in os.walk(search_dir):
+                for filename in files:
+                    if filename.endswith("win_120.stp_1.zavgs.wig"):
+                        input_file_path = os.path.join(root, filename)
+                        break
+                if input_file_path:
+                    break
+            if input_file_path:
+                scanfold_zscore(input_file_path, bed_tracks_dir,region_string)
+        except Exception as e:
+            print(f"❌ Error processing ScanFold .zscore file:\n{e}")
+            
+    if args.scanfold_ed and args.download_scanfold:
+        try: 
+            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            input_file_path = None # Initialize to None in case we don't find it
+            print(f"🔎 Searching for ScanFold .ed file in: {search_dir}")
+            for root, dirs, files in os.walk(search_dir):
+                for filename in files:
+                    if filename.endswith("win_120.stp_1.ed_avgs.wig"):
+                        input_file_path = os.path.join(root, filename)
+                        break
+                if input_file_path:
+                    break
+            if input_file_path:
+                scanfold_ed(input_file_path, bed_tracks_dir,region_string)
+        except Exception as e:
+            print(f"❌ Error processing ScanFold .ed file:\n{e}")
+            
+            
+        
+        
+    print("\n--- Analysis complete! ---")
+    print(f"📂 Results saved in '{region_string }_results' directory.")
+    print(f"📂 BED tracks saved in '{region_string }_results/bed_tracks' directory."
+          f"\n📂 Detailed results saved in '{region_string }_results/detailed_results' directory.")
 
     if args.igv:
         
@@ -553,7 +971,7 @@ def main():
         else:
             print("\n--- Starting IGV process ---")
             try:
-                open_bed_files_in_igv(region_string, args.igv_path)
+                open_bed_files_in_igv(region_string,IGV_PORT,BED_DIR,args.igv_path)
             except Exception as e:
                 print(f"❌ Error during IGV process: {e}")
 
