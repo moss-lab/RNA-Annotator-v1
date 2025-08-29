@@ -652,7 +652,7 @@ def launch_igv(igv_app_path):
         os.startfile(igv_app_path)
     elif sys.platform == "darwin":
         print(f"  (Detected macOS)")
-        subprocess.Popen(["open","-n","-a", igv_app_path])
+        subprocess.Popen(["open","-a", igv_app_path])
     else: # Linux
         print(f"  (Detected Linux OS)")
         subprocess.Popen([igv_app_path])
