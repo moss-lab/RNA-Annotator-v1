@@ -598,7 +598,7 @@ def scanfold_mfe(input_file, bed_tracks_dir,region_string):
         with open (mfe_wig_file, "w") as mfe_out:
             with open(input_file, "r") as f:
                 mfe_out.write(f'track type=wiggle_0 name="ScanFold MFE" description="Minimum Free Energy" visibility=full graphType=bar  color=0,0,255 \n')
-                mfe_out.write(f"fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n")
+                mfe_out.write(f'fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n')
                 for line in f :
                     if not line.startswith('fixedStep'):
                          mfe_out.write(line)
@@ -614,7 +614,7 @@ def scanfold_zscore(input_file, bed_tracks_dir,region_string):
         with open (zscore_wig_file, "w") as mfe_out:
             with open(input_file, "r") as f:
                 mfe_out.write(f'track type=wiggle_0 name="ScanFold zscore" description="Minimum Free Energy" visibility=full graphType=bar  color=225,0,0 \n')
-                mfe_out.write(f"fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n")
+                mfe_out.write(f'fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n')
                 for line in f :
                     if not line.startswith('fixedStep'):
                          mfe_out.write(line)
@@ -630,7 +630,7 @@ def scanfold_ed(input_file, bed_tracks_dir,region_string):
         with open (ed_wig_file, "w") as ed_out:
             with open(input_file, "r") as f:
                 ed_out.write(f'track type=wiggle_0 name="ScanFold ED" description="Ensemble Diversity" visibility=full graphType=bar  color=0,225,225 \n')
-                ed_out.write(f"fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n")
+                ed_out.write(f'fixedStep  chrom={region_string.split("-")[0].split(":")[0]} start={region_string.split("-")[0].split(":")[1]} step=1 span=1\n')
                 for line in f :
                     if not line.startswith('fixedStep'):
                          ed_out.write(line)
