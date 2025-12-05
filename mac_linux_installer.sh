@@ -31,7 +31,7 @@ else
 fi
 
 echo "✅ All requirements are met."
-echo "The script will now download the required data package (~16 GB) and create the conda environment."
+echo "The script will now download the required data package (~27,5 GB) and create the conda environment."
 read -p "Press [Enter] to continue or Ctrl+C to cancel."
 echo
 
