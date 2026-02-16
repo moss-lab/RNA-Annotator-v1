@@ -174,4 +174,9 @@ If you use RNA-Annotator in your research, please cite:
 
 ## Contact
 For questions, bug reports, or suggestions, please contact Abdelraouf at: **raouf@iastate.edu**.
+
+## License
+
+This project is released under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+
 ```
