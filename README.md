@@ -170,7 +170,7 @@ You can then use the `-igv` and `--igv-path` flags as shown in the examples abov
 ## Citation
 
 If you use RNA-Annotator in your research, please cite:
-> [Citation information will be added here upon publication.]
+> Dapour, A. O., Manigrasso, J., Rouse, W. B., La Sala, G., Aronnax, M. V., De Maria, L., Hamilton, R. S., Martinez Cuesta, S., Hogner, A., & Moss, W. N. (2026). RNAStructuromeDB: a transcriptome-wide database of predicted RNA secondary structures with integrated APIs for functional annotation and RNA-targeted drug discovery. *NAR Genomics and Bioinformatics, 8*(2), lqag044. https://doi.org/10.1093/nargab/lqag044
 
 ## Contact
 For questions, bug reports, or suggestions, please contact Abdelraouf at: **raouf@iastate.edu**.
