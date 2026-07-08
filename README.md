@@ -98,7 +98,7 @@ These flags tell the tool which analyses to perform. You can combine as many as 
 *   `-miRNA`: Extracts known miRNA annotations from a local GFF3 file.
 *   `-chem_mod`: Fetches known RNA chemical modifications from the RMBase database.
 *   `-polyA`: Extracts polyadenylation sites from the PolyASite 2.0 database.
-*   `-repeated-element`: Fetches repetitive element annotations from the Dfam API.
+*   `-repeated_element`: Fetches repetitive element annotations from the Dfam API.
 *   `-chemical_prop`: Extracts local chemical probing data from local WIG files.
 *   `-clinvar`: Extracts clinical variants from a local ClinVar VCF file.
 *   `-target_scan`: Extracts predicted miRNA binding sites from local TargetScan BED files.
@@ -141,7 +141,7 @@ python rna-annotator.py ENST00000263100.8 \
 -miRNA \
 -chem_mod \
 -polyA \
--repeated-element \
+-repeated_element \
 -chemical_prop \
 -GTEX \
 -clinvar \
