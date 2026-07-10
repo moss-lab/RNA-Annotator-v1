@@ -659,6 +659,22 @@ def launch_igv(igv_app_path):
     print("⏳ Waiting 15 seconds for IGV to start and listen on its port...")
     time.sleep(15)
 
+def set_igv_genome(IGV_PORT):
+    """Force IGV to use Human hg38 genome."""
+    if sys.platform == "win32":
+        print("⚠️ Please manually select Human (hg38) in IGV on Windows.")
+        return
+
+    try:
+        cmd = f'echo "genome hg38" | nc localhost {IGV_PORT}'
+        subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        print("✅ IGV genome set to Human (hg38)")
+        time.sleep(3)
+    except subprocess.CalledProcessError as e:
+        print("❌ Failed to set IGV genome to hg38. Is IGV running?")
+        print(f"   Error: {e.stderr.strip()}")
+
+
 def send_to_igv(file_path,IGV_PORT, region=None):
 
     if sys.platform == "win32":
@@ -694,6 +710,7 @@ def open_bed_files_in_igv(region,IGV_PORT,BED_DIR,igv_app_path):
         return
     
     launch_igv(igv_app_path)
+    set_igv_genome(IGV_PORT)
 
     for i, bed_file in enumerate(bed_files):
         bed_path = os.path.join(BED_DIR, bed_file)
@@ -702,16 +719,298 @@ def open_bed_files_in_igv(region,IGV_PORT,BED_DIR,igv_app_path):
         else:
             send_to_igv(bed_path,IGV_PORT)
 
-# --- Main Execution ---
+def list_chemical_prop_names(resources_dir="resources_data_sets"):
+    """
+    List available chemical probing / RNA structural reactivity dataset names
+    from file names only.
+
+    It uses the same file-selection pattern as -chemical_prop:
+    all .wig.gz files that do not start with GTEX.
+    """
+
+    chemical_files = sorted([
+        f for f in os.listdir(resources_dir)
+        if f.endswith(".wig.gz") and not f.startswith("GTEX")
+    ])
+
+    if not chemical_files:
+        print("❌ No chemical probing .wig.gz files found in resources_data_sets/")
+        return
+
+    print("\nAvailable chemical probing / RNA structural reactivity datasets:\n")
+
+    for file_name in chemical_files:
+        dataset_name = file_name.replace(".wig.gz", "")
+        print(dataset_name)
+
+def get_chemical_prop_files(resources_dir="resources_data_sets"):
+    """
+    Get all chemical probing / RNA structural reactivity .wig.gz files.
+    Uses the same file-selection pattern as the original -chemical_prop option:
+    all .wig.gz files that do not start with GTEX.
+    """
+    return sorted([
+        f for f in os.listdir(resources_dir)
+        if f.endswith(".wig.gz") and not f.startswith("GTEX")
+    ])
+
+
+def get_chemical_prop_dataset_name(file_name):
+    """
+    Return dataset name from file name by removing .wig.gz.
+    """
+    return os.path.basename(file_name).replace(".wig.gz", "")
+
+
+def get_chemical_prop_group_name(file_name):
+    """
+    Extract method/group name from chemical probing file name.
+
+    Example:
+    icSHAPE_hg38_Cell_2016... -> icSHAPE
+    DMS-seq_hg38_Nature_2014... -> DMS-seq
+    Keth-seq_hg38_Nature_Chemical_Biology_2020... -> Keth-seq
+    """
+    dataset_name = get_chemical_prop_dataset_name(file_name)
+
+    if "_hg38" in dataset_name:
+        return dataset_name.split("_hg38")[0]
+
+    return dataset_name.split("_")[0]
+
+
+def normalize_chemical_prop_name(name):
+    """
+    Normalize names for flexible matching.
+    """
+    return name.lower().replace("_", " ").replace("-", " ").replace(".", " ").strip()
+
+
+def list_chemical_prop_group_names(resources_dir="resources_data_sets"):
+    """
+    List available chemical probing / RNA structural reactivity method groups.
+    This prints only group names, not every individual file name.
+    """
+    chemical_files = get_chemical_prop_files(resources_dir)
+
+    if not chemical_files:
+        print("❌ No chemical probing .wig.gz files found in resources_data_sets/")
+        return
+
+    groups = {}
+
+    for file_name in chemical_files:
+        group_name = get_chemical_prop_group_name(file_name)
+        groups[group_name] = groups.get(group_name, 0) + 1
+
+    print("\nAvailable chemical probing / RNA structural reactivity method groups:\n")
+
+    for group_name in sorted(groups):
+        print(f"{group_name} ({groups[group_name]} files)")
+
+
+def select_chemical_prop_files(chemical_arg, resources_dir="resources_data_sets"):
+    """
+    Select chemical probing files.
+
+    Examples:
+    -chemical_prop
+        -> all files
+
+    -chemical_prop icSHAPE
+        -> all files from the icSHAPE group
+
+    -chemical_prop DMS-seq,PARS
+        -> all files from DMS-seq and PARS groups
+
+    -chemical_prop full_dataset_name
+        -> matching dataset/file name
+
+    -chemical_prop dataset1,dataset2
+        -> matching multiple dataset/file names
+    """
+    chemical_files = get_chemical_prop_files(resources_dir)
+
+    if not chemical_files:
+        print("❌ No chemical probing .wig.gz files found in resources_data_sets/")
+        return []
+
+    if chemical_arg == "all":
+        return [os.path.join(resources_dir, f) for f in chemical_files]
+
+    requested_items = [
+        item.strip()
+        for item in chemical_arg.split(",")
+        if item.strip()
+    ]
+
+    selected_files = []
+
+    for requested in requested_items:
+        requested_no_ext = requested.replace(".wig.gz", "")
+        normalized_requested = normalize_chemical_prop_name(requested_no_ext)
+
+        for file_name in chemical_files:
+            dataset_name = get_chemical_prop_dataset_name(file_name)
+            group_name = get_chemical_prop_group_name(file_name)
+
+            normalized_dataset_name = normalize_chemical_prop_name(dataset_name)
+            normalized_group_name = normalize_chemical_prop_name(group_name)
+
+            # Match exact method group OR full/partial dataset/file name.
+            if (
+                normalized_requested == normalized_group_name
+                or normalized_requested in normalized_dataset_name
+            ):
+                selected_files.append(os.path.join(resources_dir, file_name))
+
+    selected_files = list(dict.fromkeys(selected_files))
+
+    if not selected_files:
+        print(f"❌ No chemical probing files matched: {chemical_arg}")
+        print("Use -chemical_prop_group_list to see method groups.")
+        print("Use -chemical_prop_list to see full dataset names.")
+        return []
+
+    print("\nSelected chemical probing / RNA structural reactivity tracks:")
+    for file_path in selected_files:
+        dataset_name = get_chemical_prop_dataset_name(os.path.basename(file_path))
+        print(f"  - {dataset_name}")
+
+    return selected_files
+
+
+def list_gtex_tissue_names(resources_dir="resources_data_sets"):
+    """
+    List available GTEx tissue names from file names.
+
+    Expected file name pattern:
+    GTEX-Y5LM-1826-SM-4VDT9.Minor_Salivary_Gland.RNAseq.wig.gz
+
+    Extracted tissue name:
+    Minor_Salivary_Gland
+    """
+
+    gtex_files = sorted([
+        f for f in os.listdir(resources_dir)
+        if f.startswith("GTEX") and f.endswith(".wig.gz")
+    ])
+
+    if not gtex_files:
+        print("❌ No GTEx .wig.gz files found in resources_data_sets/")
+        return
+
+    tissue_names = []
+
+    for file_name in gtex_files:
+        parts = file_name.split(".")
+
+        if len(parts) >= 3:
+            tissue_name = parts[1]
+            tissue_names.append(tissue_name)
+
+    tissue_names = sorted(set(tissue_names))
+
+    print("\nAvailable GTEx tissue names:\n")
+    for tissue in tissue_names:
+        print(tissue)
+
+
+def normalize_gtex_name(name):
+    """
+    Normalize tissue names for flexible matching.
+    Example:
+    Minor_Salivary_Gland -> minor salivary gland
+    """
+    return name.lower().replace("_", " ").replace("-", " ").strip()
+
+
+def get_gtex_tissue_name_from_file(file_name):
+    """
+    Extract tissue name from GTEx file name.
+
+    Expected pattern:
+    GTEX-Y5LM-1826-SM-4VDT9.Minor_Salivary_Gland.RNAseq.wig.gz
+
+    Extracted:
+    Minor_Salivary_Gland
+    """
+    parts = file_name.split(".")
+
+    if len(parts) >= 3:
+        return parts[1]
+
+    return file_name
+
+
+def select_gtex_files(gtex_arg, resources_dir="resources_data_sets"):
+    """
+    Select GTEx files.
+
+    - If user writes: -GTEX
+      gtex_arg = "all", so all GTEx files are selected.
+
+    - If user writes: -GTEX Liver
+      only GTEx files with Liver in the tissue name are selected.
+
+    - If user writes: -GTEX Liver,Ovary
+      GTEx files matching Liver or Ovary are selected.
+    """
+
+    gtex_files = sorted([
+        f for f in os.listdir(resources_dir)
+        if f.startswith("GTEX") and f.endswith(".wig.gz")
+    ])
+
+    if not gtex_files:
+        print("❌ No GTEx .wig.gz files found in resources_data_sets/")
+        return []
+
+    if gtex_arg == "all":
+        return [os.path.join(resources_dir, f) for f in gtex_files]
+
+    requested_tissues = [
+        tissue.strip()
+        for tissue in gtex_arg.split(",")
+        if tissue.strip()
+    ]
+
+    selected_files = []
+
+    for file_name in gtex_files:
+        tissue_name = get_gtex_tissue_name_from_file(file_name)
+        normalized_tissue_name = normalize_gtex_name(tissue_name)
+
+        for requested in requested_tissues:
+            normalized_requested = normalize_gtex_name(requested)
+
+            if normalized_requested in normalized_tissue_name:
+                selected_files.append(os.path.join(resources_dir, file_name))
+                break
+
+    if not selected_files:
+        print(f"❌ No GTEx files matched: {gtex_arg}")
+        print("Use -gtex_list to see available tissue names.")
+        return []
+
+    print("\nSelected GTEx tissue tracks:")
+    for file_path in selected_files:
+        tissue_name = get_gtex_tissue_name_from_file(os.path.basename(file_path))
+        print(f"  - {tissue_name}")
+
+    return selected_files
 
 def main():
     
     
     parser = argparse.ArgumentParser(description="Run genomic analysis and optionally view results in IGV.")
     
-    parser.add_argument('genomic_coordinates', 
-                        type=str, 
-                        help="Required. Genomic coordinates in 'chr:start-end' format (e.g., 'chr1:632108-632403').")
+    parser.add_argument(
+                        'genomic_coordinates',
+                        type=str,
+                        nargs='?',
+                        help="Genomic coordinates in 'chr:start-end' format or an Ensembl transcript ID."
+)
     parser.add_argument('-download_scanfold', 
                         action='store_true', 
                         help="Downloads precomputed ScanFold data from https://www.structurome.bb.iastate.edu/azt/. NOTE: This requires the input coordinates to span the *entire* length of a full pre-mRNA transcript, not a partial region.")
@@ -745,15 +1044,45 @@ def main():
     parser.add_argument('-polyA', 
                         action='store_true', 
                         help="Extracts polyadenylation sites from the PolyASite 2.0 database.")
-    parser.add_argument('-repeated-element', 
+    parser.add_argument('-repeated_element', 
                         action='store_true', 
                         help="Fetches repetitive element annotations (e.g., SINEs, LINEs) from the Dfam API.")
-    parser.add_argument('-chemical_prop', 
-                        action='store_true', 
-                        help="Extracts local chemical probing data (e.g., icSHAPE) from local WIG files.")
-    parser.add_argument('-GTEX', 
-                        action='store_true', 
-                        help="Extracts rna expression coverage per tissue form UCSC GTEX Tracks.")
+    parser.add_argument(
+                        '-chemical_prop',
+                        nargs='?',
+                        const='all',
+                        default=None,
+                        metavar='DATASET',
+                        help=(
+                            "Extract local chemical probing/RNA structural reactivity tracks. "
+                            "Use '-chemical_prop' for all datasets, or "
+                            "'-chemical_prop icSHAPE' / '-chemical_prop DMS-seq,PARS' "
+                            "to select method groups or dataset names."
+                        )
+    )
+    parser.add_argument(
+                        '-GTEX',
+                        nargs='?',
+                        const='all',
+                        default=None,
+                        metavar='TISSUE',
+                        help=(
+                            "Extract GTEx RNA expression tracks. "
+                            "Use '-GTEX' for all tissues, or '-GTEX Liver' / '-GTEX Liver,Ovary' "
+                            "to select specific tissues."
+                        )
+    )
+    parser.add_argument(
+                        '-chemical_prop_list',
+                        action='store_true',
+                        help="List available chemical probing/RNA structural reactivity dataset names from file names and exit."
+    )
+    parser.add_argument(
+                        '-chemical_prop_group_list',
+                        action='store_true',
+                        help="List available chemical probing/RNA structural reactivity method groups and exit."
+    )
+
     parser.add_argument('-clinvar', 
                         action='store_true', 
                         help="Extracts clinical variants (SNPs and indels) from a local ClinVar VCF file.")
@@ -781,10 +1110,56 @@ def main():
     parser.add_argument('--igv-path', 
                         type=str, 
                         help="Required if using -igv. Provide the full path to your IGV application executable.")
+    parser.add_argument(
+                        '-gtex_list',
+                        action='store_true',
+                        help="List available GTEx tissue names from GTEx file names and exit."
+)
    
 
     args = parser.parse_args()
+
+    if args.gtex_list:
+        list_gtex_tissue_names()
+        sys.exit(0)
     
+    if args.chemical_prop_list:
+        list_chemical_prop_names()
+        sys.exit(0)
+
+    if args.chemical_prop_group_list:
+        list_chemical_prop_group_names()
+        sys.exit(0)
+
+    if not args.genomic_coordinates:
+       parser.error("genomic_coordinates is required unless using -gtex_list, -chemical_prop_list, or -chemical_prop_group_list.")
+
+    # --- Early ScanFold input validation ---
+   # --- Early ScanFold input validation ---
+    if args.download_scanfold and not args.genomic_coordinates.startswith("ENST"):
+        print("❌ Error: -download_scanfold requires an Ensembl transcript ID, not a genomic coordinate.")
+        print(f"   You provided: {args.genomic_coordinates}")
+        print()
+        print("Why?")
+        print("   ScanFold precomputed files are stored by full transcript, not by small genomic intervals.")
+        print("   Therefore, a partial coordinate region cannot be downloaded directly from ScanFold.")
+        print()
+        print("How to use ScanFold for this region:")
+        print("   1. Find the Ensembl transcript ID that contains your coordinate region.")
+        print("   2. Re-run RNA-Annotator using the full transcript ID with -download_scanfold.")
+        print("   3. After IGV opens, use the IGV search/goto box to jump back to your small region:")
+        print(f"      {args.genomic_coordinates}")
+        print()
+        print("Example:")
+        print("   python rna-annotator.py ENST00000380152.9 -download_scanfold -scanfold_bp -scanfold_mfe -igv --igv-path \"/Users/abdelraouf/Downloads/IGV_2.16.0.app\"")
+        print()
+        print("Then in IGV, search/go to:")
+        print(f"   {args.genomic_coordinates}")
+        print()
+        print("Note:")
+        print("   If you split the command over multiple terminal lines, add a backslash \\ at the end of each continued line.")
+        sys.exit(1)
+            
 
     try:
         if args.genomic_coordinates.startswith("chr"):
@@ -808,17 +1183,19 @@ def main():
     IGV_PORT = 60151
 
 
-    if args.chemical_prop: 
-        chemical_prop_file = [os.path.join("resources_data_sets", f) for f in os.listdir("resources_data_sets") if (f.endswith(".wig.gz") and not f.startswith("GTEX"))]
+    if args.chemical_prop is not None:
+        chemical_prop_file = select_chemical_prop_files(args.chemical_prop)
+
         if not chemical_prop_file:
-            print("❌ No chemical property files found in 'resources_data_sets' directory.")
+            print("❌ No chemical probing files selected.")
         else:
             chemical_prop(chrom, start, end, bed_tracks_dir, detailed_results_dir, chemical_prop_file)
             
-    if args.GTEX:
-        GTEX_data_file = [os.path.join("resources_data_sets", f) for f in os.listdir("resources_data_sets") if f.startswith("GTEX")]
+    if args.GTEX is not None:
+        GTEX_data_file = select_gtex_files(args.GTEX)
+
         if not GTEX_data_file:
-            print("❌ No chemical property files found in 'resources_data_sets' directory.")
+            print("❌ No GTEx files selected.")
         else:
             GTEX_data(chrom, start, end, bed_tracks_dir, detailed_results_dir, GTEX_data_file)
 
@@ -868,18 +1245,20 @@ def main():
         fetch_TFs(chrom, start, end, bed_tracks_dir)    
         
         
+    scanfold_transcript_id = args.genomic_coordinates
     if args.download_scanfold:
         if  args.genomic_coordinates.startswith("ENST") and "."  in args.genomic_coordinates:
-            download_scanfold(args.genomic_coordinates,results_dir)
+            scanfold_transcript_id = args.genomic_coordinates
+            download_scanfold(scanfold_transcript_id,results_dir)
         elif args.genomic_coordinates.startswith("ENST") and "."  not in args.genomic_coordinates:
-            ENST=trans_cor_map[trans_cor_map['Transcript stable ID version']].iloc[0]
-            download_scanfold(ENST,results_dir)
+            scanfold_transcript_id = trans_cor_map['Transcript stable ID version'].dropna().iloc[0]
+            download_scanfold(scanfold_transcript_id,results_dir)
         else:
             print("❌ Error: To use -download_scanfold, the genomic_coordinates argument must be a valid Ensembl transcript ID (e.g., ENST00000380152.9).")
     
     if args.scanfold_bp and args.download_scanfold:
         try: 
-            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            search_dir = f"{results_dir}/{scanfold_transcript_id}_ScanFold"
             
             input_file_path = None # Initialize to None in case we don't find it
             
@@ -905,7 +1284,7 @@ def main():
     
     if args.scanfold_mfe and args.download_scanfold:
         try: 
-            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            search_dir = f"{results_dir}/{scanfold_transcript_id}_ScanFold"
             input_file_path = None # Initialize to None in case we don't find it
             print(f"🔎 Searching for ScanFold .mfe file in: {search_dir}") 
             for root, dirs, files in os.walk(search_dir):
@@ -922,7 +1301,7 @@ def main():
     
     if args.scanfold_zscore and args.download_scanfold:
         try: 
-            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            search_dir = f"{results_dir}/{scanfold_transcript_id}_ScanFold"
             input_file_path = None # Initialize to None in case we don't find it
             print(f"🔎 Searching for ScanFold .zscore file in: {search_dir}")
             for root, dirs, files in os.walk(search_dir):
@@ -939,7 +1318,7 @@ def main():
             
     if args.scanfold_ed and args.download_scanfold:
         try: 
-            search_dir = f"{results_dir}/{args.genomic_coordinates}_ScanFold"
+            search_dir = f"{results_dir}/{scanfold_transcript_id}_ScanFold"
             input_file_path = None # Initialize to None in case we don't find it
             print(f"🔎 Searching for ScanFold .ed file in: {search_dir}")
             for root, dirs, files in os.walk(search_dir):
