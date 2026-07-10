@@ -118,6 +118,55 @@ By default, `-GTEX` processes all available GTEx tissue tracks. To avoid generat
 
 ```bash
 python rna-annotator.py -gtex_list
+```
+
+Then, selected tissues can be provided after `-GTEX`:
+
+```bash
+python rna-annotator.py chr19:58345183-58353492 -GTEX Liver
+```
+
+Multiple tissues can be provided as a comma-separated list:
+
+```bash
+python rna-annotator.py chr19:58345183-58353492 -GTEX Liver,Ovary
+```
+
+Similarly, `-chemical_prop` alone processes all available chemical probing/RNA structural reactivity tracks. Because this can generate many tracks, users can first list all available full dataset names:
+
+```bash
+python rna-annotator.py -chemical_prop_list
+```
+
+Users can also list only the available chemical probing method groups:
+
+```bash
+python rna-annotator.py -chemical_prop_group_list
+```
+
+Then, selected groups or datasets can be provided after `-chemical_prop`. For example, to select all icSHAPE-related tracks:
+
+```bash
+python rna-annotator.py chr19:58345183-58353492 -chemical_prop icSHAPE
+```
+
+To select multiple method groups:
+
+```bash
+python rna-annotator.py chr19:58345183-58353492 -chemical_prop DMS-seq,PARS
+```
+
+To select one specific full dataset name:
+
+```bash
+python rna-annotator.py chr19:58345183-58353492 -chemical_prop icSHAPE_hg38_Cell_Research_2021_NAI-N3_in_vivo_plus_transcriptome-wide_HeLa-pos
+```
+
+Multiple full dataset names can also be provided as a comma-separated list:
+
+```bash
+python rna-annotator.py chr19:58345183-58353492 -chemical_prop dataset_name_1,dataset_name_2
+```
 
 ##### IGV Integration
 *   `-igv`: After analysis, automatically launch and load results into IGV.
