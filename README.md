@@ -90,24 +90,34 @@ These flags tell the tool which analyses to perform. You can combine as many as 
 *   `-scanfold_mfe`: Generates a wig track for ScanFold Minimum Free Energy (MFE).
 *   `-scanfold_zscore`: Generates a wig track for ScanFold z-score.
 *   `-scanfold_ed`: Generates a wig track for ScanFold Ensemble Diversity (ED).
-
 ##### Standard Genomic Annotations
-*   `-refseq_functional`: Extracts RefSeq functional element annotations.
-*   `-eclips`: Extracts eCLIP-seq peaks to identify RNA-Binding Protein (RBP) sites.
-*   `-SNP`: Fetches all known SNPs for the region from the Ensembl REST API.
-*   `-miRNA`: Extracts known miRNA annotations from a local GFF3 file.
-*   `-chem_mod`: Fetches known RNA chemical modifications from the RMBase database.
-*   `-polyA`: Extracts polyadenylation sites from the PolyASite 2.0 database.
-*   `-repeated_element`: Fetches repetitive element annotations from the Dfam API.
-*   `-chemical_prop`: Extracts local chemical probing data from local WIG files.
-*   `-clinvar`: Extracts clinical variants from a local ClinVar VCF file.
-*   `-target_scan`: Extracts predicted miRNA binding sites from local TargetScan BED files.
-*   `-phastCons`: Fetches evolutionary conservation scores (phastCons 100-way).
-*   `-CpG_islands`: Extracts CpG islands from the UCSC CpG Islands Track.
-*   `-SpliceVar`: Extracts Splice variants from the UCSC SpliceVarDB Track.
-*   `-Alt_Events`: Extracts alternative splicing events from the UCSC Alt Events Track.
-*   `-TFs`: Extracts Transcription Factor binding sites from the UCSC TFBS Track.
-*   `-GTEX`: Extracts RNA expression coverage per tissue from UCSC GTEX Tracks.
+
+* `-refseq_functional`: Extracts RefSeq functional element annotations.
+* `-eclips`: Extracts eCLIP-seq peaks to identify RNA-binding protein (RBP) sites.
+* `-SNP`: Fetches known SNPs for the region from the Ensembl REST API.
+* `-miRNA`: Extracts known miRNA annotations from a local GFF3 file.
+* `-chem_mod`: Fetches known RNA chemical modifications from the RMBase database.
+* `-polyA`: Extracts polyadenylation sites from the PolyASite 2.0 database.
+* `-repeated_element`: Fetches repetitive element annotations from the Dfam API.
+* `-chemical_prop`: Extracts local chemical probing/RNA structural reactivity tracks from local WIG files.
+* `-chemical_prop_list`: Lists all available chemical probing/RNA structural reactivity dataset names.
+* `-chemical_prop_group_list`: Lists available chemical probing/RNA structural reactivity method groups.
+* `-clinvar`: Extracts clinical variants from a local ClinVar VCF file.
+* `-target_scan`: Extracts predicted miRNA binding sites from local TargetScan BED files.
+* `-phastCons`: Fetches evolutionary conservation scores from the phastCons 100-way vertebrate track.
+* `-CpG_islands`: Extracts CpG islands from the UCSC CpG Islands Track.
+* `-SpliceVar`: Extracts splice variants from the UCSC SpliceVarDB Track.
+* `-Alt_Events`: Extracts alternative splicing events from the UCSC Alt Events Track.
+* `-TFs`: Extracts transcription factor binding sites from the UCSC TFBS Track.
+* `-GTEX`: Extracts RNA expression coverage per tissue from UCSC GTEx tracks.
+* `-gtex_list`: Lists all available GTEx tissue names.
+
+##### Selecting GTEx and Chemical Probing Tracks
+
+By default, `-GTEX` processes all available GTEx tissue tracks. To avoid generating too many tracks, users can first list available tissues:
+
+```bash
+python rna-annotator.py -gtex_list
 
 ##### IGV Integration
 *   `-igv`: After analysis, automatically launch and load results into IGV.
